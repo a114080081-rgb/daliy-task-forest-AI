@@ -3,18 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>森林莊園誌 - 任務核心最終版</title>
+    <title>森林莊園誌 - 最終雲端引導版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Noto Sans TC', sans-serif; margin: 0; padding: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: #1a5e8a; }
 
-        /* --- 登入介面 --- */
-        #loginOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 1000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(15px); }
-        .login-card { background: white; border: 6px solid #5d4037; border-radius: 32px; padding: 40px; width: 95%; max-width: 400px; text-align: center; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
+        /* --- 登入與教學遮罩 --- */
+        #loginOverlay, #tutorialOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 1000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(15px); }
+        .login-card, .tutorial-card { background: white; border: 6px solid #5d4037; border-radius: 32px; padding: 35px; width: 95%; max-width: 420px; text-align: center; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
+        #tutorialOverlay { z-index: 2000; display: none; }
 
         /* --- 背景與天氣系統 --- */
-        #scenery { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -10; transition: background 2s ease; }
+        #scenery { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -10; transition: background 2.5s ease; }
         .layer-ground { position: absolute; bottom: 0; width: 100%; height: 25%; background: linear-gradient(to bottom, #66bb6a 0%, #3e281b 100%); z-index: -2; }
         #weather-effects { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: -5; }
         .weather-particle { position: absolute; background: white; pointer-events: none; }
@@ -30,38 +31,14 @@
         .pixel-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
         .active-tab { background: #8d6e63 !important; }
 
-        /* --- 左右滑動機制 --- */
-        .seed-selector { 
-            display: flex !important; flex-wrap: nowrap !important; overflow-x: auto !important; 
-            gap: 12px; padding: 15px; width: 100%; background: #fafafa; border-bottom: 1px solid #eee; -webkit-overflow-scrolling: touch; 
-        }
-        .seed-chip { 
-            flex: 0 0 auto !important; padding: 10px 20px; border: 2.5px solid #ddd; border-radius: 100px; 
-            font-size: 14px; font-weight: 800; cursor: pointer; background: white; display: flex; align-items: center; gap: 6px; white-space: nowrap; 
-        }
+        /* --- 滑動機制 --- */
+        .seed-selector { display: flex !important; flex-wrap: nowrap !important; overflow-x: auto !important; gap: 12px; padding: 15px; width: 100%; background: #fafafa; border-bottom: 1px solid #eee; -webkit-overflow-scrolling: touch; }
+        .seed-chip { flex: 0 0 auto !important; padding: 10px 20px; border: 2.5px solid #ddd; border-radius: 100px; font-size: 14px; font-weight: 800; cursor: pointer; background: white; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
         .seed-chip.active { border-color: #5d4037; background: #efebe9; color: #5d4037; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .seed-chip.locked { opacity: 0.4; filter: grayscale(1); cursor: not-allowed; border-style: dotted; }
 
-        .garden-scroll-area { 
-            display: flex !important; flex-wrap: nowrap !important; overflow-x: auto !important; overflow-y: hidden !important;
-            gap: 15px; padding: 25px 15px; width: 100%; min-height: 320px; -webkit-overflow-scrolling: touch; 
-            scrollbar-width: thin; scrollbar-color: #5d4037 transparent;
-        }
+        .garden-scroll-area { display: flex !important; flex-wrap: nowrap !important; overflow-x: auto !important; overflow-y: hidden !important; gap: 15px; padding: 25px 15px; width: 100%; min-height: 320px; -webkit-overflow-scrolling: touch; scrollbar-width: thin; scrollbar-color: #5d4037 transparent; }
         .garden-tree-item { flex: 0 0 220px !important; display: flex; flex-direction: column; align-items: center; position: relative; background: rgba(0,0,0,0.03); border-radius: 32px; padding: 20px 5px; cursor: pointer; }
-
-        /* 農場視覺 */
-        .farm-canvas { background: #a1887f; position: relative; overflow: hidden; border-radius: 20px; border: 3px solid #8d6e63; height: 100px; margin: 5px 0; flex-shrink: 0; background-image: repeating-linear-gradient(90deg, transparent, transparent 30px, rgba(0,0,0,0.06) 30px, rgba(0,0,0,0.06) 60px); }
-        @keyframes farmerWalk { 0% { left: 2%; transform: scaleX(1); } 50% { left: 88%; transform: scaleX(-1); } 100% { left: 2%; transform: scaleX(1); } }
-        .farmer-unit { position: absolute; font-size: 42px; bottom: 8px; animation: farmerWalk 12s infinite linear; z-index: 10; pointer-events: none; }
-
-        /* 居民視覺 */
-        .resident-item { position: absolute !important; font-size: 24px; z-index: 20; animation: jump 2.5s infinite ease-in-out; pointer-events: none; transition: opacity 0.6s ease; }
-        @keyframes jump { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
-        .souvenir-bubble { position: absolute; top: -10px; background: #f9a825; color: white; border-radius: 100px; padding: 2px 14px; font-size: 13px; font-weight: 900; z-index: 30; border: 2.5px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-        .bubble-off { background: #777 !important; }
-
-        .hidden-tab { display: none !important; }
-        .xp-bar-fill { background: linear-gradient(90deg, #81c784, #388e3c); transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
-        #treeModal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 92%; max-width: 420px; background: white; border: 4px solid #5d4037; border-radius: 28px; z-index: 100; padding: 25px; display: none; box-shadow: 0 0 100px rgba(0,0,0,0.6); }
 
         /* 特效層 */
         .hype-particle { position: fixed; pointer-events: none; z-index: 199; border-radius: 50%; animation: particleAnim 0.8s forwards; }
@@ -71,39 +48,51 @@
         .shake-screen { animation: screenShake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes screenShake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
 
+        /* 農場與居民 */
+        .farm-canvas { background: #a1887f; position: relative; overflow: hidden; border-radius: 20px; border: 3px solid #8d6e63; height: 100px; margin: 5px 0; flex-shrink: 0; background-image: repeating-linear-gradient(90deg, transparent, transparent 30px, rgba(0,0,0,0.06) 30px, rgba(0,0,0,0.06) 60px); }
+        @keyframes farmerWalk { 0% { left: 2%; transform: scaleX(1); } 50% { left: 88%; transform: scaleX(-1); } 100% { left: 2%; transform: scaleX(1); } }
+        .farmer-unit { position: absolute; font-size: 42px; bottom: 8px; animation: farmerWalk 12s infinite linear; z-index: 10; pointer-events: none; }
+        .resident-item { position: absolute !important; font-size: 24px; z-index: 20; animation: jump 2.5s infinite ease-in-out; pointer-events: none; transition: opacity 0.6s ease; }
+        @keyframes jump { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+
+        .delete-btn { background: #ff5252; color: white; width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; border: none; }
+        #treeModal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 92%; max-width: 420px; background: white; border: 4px solid #5d4037; border-radius: 28px; z-index: 100; padding: 25px; display: none; box-shadow: 0 0 100px rgba(0,0,0,0.6); }
         #testPanel { position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.9); color: #0f0; padding: 10px; border-radius: 12px; z-index: 1001; font-size: 9px; border: 1px solid #0f0; }
         .wonder-glow { filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.7)); }
         .floating { animation: floatingAnim 3s infinite ease-in-out; }
         @keyframes floatingAnim { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-
-        /* 刪除按鈕樣式 */
-        .delete-btn { 
-            background: #ff5252; color: white; width: 28px; height: 28px; 
-            border-radius: 8px; display: flex; align-items: center; justify-content: center; 
-            font-size: 14px; transition: all 0.2s; cursor: pointer; border: none;
-        }
-        .delete-btn:hover { background: #ff1744; transform: scale(1.1); }
     </style>
 </head>
 <body>
     <div id="scenery"><div class="layer-ground"></div></div>
     <div id="weather-effects"></div>
 
-    <div id="testPanel">
-        <div class="font-bold border-b border-green-800 pb-1 mb-1 text-center">DEBUG 測試</div>
-        <button onclick="addTestVal('money', 10000)">🪙 +10k</button>
-        <button onclick="addTestVal('food', 1000)">🍎 +1k</button>
-        <button onclick="addTestVal('xp', 50)">🧬 +XP</button>
-        <button onclick="addTestVal('seeds', 5)">📦 全+5</button>
+    <!-- 教學遮罩 -->
+    <div id="tutorialOverlay">
+        <div class="tutorial-card">
+            <h3 id="tutTitle" class="text-2xl font-black text-[#5d4037] mb-4">歡迎來到森林莊園！</h3>
+            <p id="tutText" class="text-sm text-gray-600 mb-8 leading-relaxed">這是一片神秘的森林。作為冒險者，你將透過日常修行來培育奇蹟之樹。讓我們開始導覽吧！</p>
+            <button onclick="nextTutorialStep()" class="pixel-btn w-full !py-4 text-lg !bg-emerald-600">下一步</button>
+        </div>
     </div>
 
+    <!-- 測試面板 -->
+    <div id="testPanel">
+        <div class="font-bold border-b border-green-800 pb-1 mb-1 text-center">DEBUG</div>
+        <button onclick="addTestVal('money', 10000)">🪙+10k</button>
+        <button onclick="addTestVal('food', 1000)">🍎+1k</button>
+        <button onclick="addTestVal('xp', 50)">🧬+XP</button>
+        <button onclick="addTestVal('seeds', 5)">📦全+5</button>
+    </div>
+
+    <!-- 登入遮罩 -->
     <div id="loginOverlay">
         <div class="login-card">
             <h2 class="text-2xl font-black text-[#5d4037] mb-6">森林莊園誌 🌿</h2>
-            <input type="text" id="accInput" class="w-full p-4 border-2 border-gray-100 rounded-2xl mb-3 focus:border-emerald-400 outline-none" placeholder="輸入帳號">
-            <input type="password" id="pwInput" class="w-full p-4 border-2 border-gray-100 rounded-2xl mb-6 focus:border-emerald-400 outline-none" placeholder="輸入密碼">
-            <button id="loginBtn" class="pixel-btn w-full !py-4 text-lg mb-2 !bg-emerald-600">進入莊園</button>
-            <p id="loginStatus" class="text-xs text-gray-400 mt-2">進度將即時同步至雲端試算表</p>
+            <input type="text" id="accInput" class="w-full p-4 border-2 border-gray-100 rounded-2xl mb-3 outline-none" placeholder="輸入帳號">
+            <input type="password" id="pwInput" class="w-full p-4 border-2 border-gray-100 rounded-2xl mb-6 outline-none" placeholder="輸入密碼">
+            <button id="loginBtn" class="pixel-btn w-full !py-4 text-lg mb-2 !bg-emerald-600">進入莊園並載入雲端</button>
+            <p id="loginStatus" class="text-xs text-gray-400 mt-2">首次登入將贈送初始種子</p>
         </div>
     </div>
 
@@ -122,16 +111,16 @@
         </header>
 
         <nav class="flex gap-2 p-2 px-3 overflow-x-auto bg-white/50 border-b">
-            <button class="pixel-btn tab-btn active-tab" data-target="tab-home">🌱 培育管理</button>
-            <button class="pixel-btn tab-btn" data-target="tab-estate">🏡 我的莊園</button>
+            <button class="pixel-btn tab-btn active-tab" data-target="tab-home" id="tut-tab-1">🌱 培育管理</button>
+            <button class="pixel-btn tab-btn" data-target="tab-estate" id="tut-tab-2">🏡 我的莊園</button>
             <button class="pixel-btn tab-btn" data-target="tab-mining">⛏️ 資源探勘</button>
             <button class="pixel-btn tab-btn" data-target="tab-dex">📖 成長圖鑑</button>
         </nav>
 
         <div class="flex-1 overflow-y-auto p-4 scrollbar-hide">
-            <!-- 1. 培育 -->
+            <!-- 1. 培育管理 -->
             <div id="tab-home" class="tab-content flex flex-col gap-4">
-                <div class="bg-gray-100/60 p-2 rounded-2xl border border-gray-200">
+                <div class="bg-gray-100/60 p-2 rounded-2xl border border-gray-200" id="tut-seeds">
                     <div id="seedLockInfo" class="text-[11px] font-black text-orange-600 mb-1 ml-2 hidden">⚠️ 培育中，不可切換</div>
                     <div id="seedSelectLabel" class="text-[11px] font-black text-gray-500 mb-1 ml-2">選取欲培育的種子 (左右滑動)</div>
                     <div id="seedListContainer" class="seed-selector"></div>
@@ -155,20 +144,20 @@
                     </div>
                 </section>
                 
-                <div class="bg-white/60 p-4 rounded-3xl border-2 border-[#5d4037]/10">
-                    <div class="text-sm font-black text-[#5d4037] mb-2">🚿 每日任務與自訂目標 (7日目標)</div>
+                <div class="bg-white/60 p-4 rounded-3xl border-2 border-[#5d4037]/10" id="tut-tasks">
+                    <div class="text-sm font-black text-[#5d4037] mb-2">🚿 培育修行與自訂目標 (7日目標)</div>
                     <div class="flex gap-2 mb-3">
                         <input type="text" id="taskInput" class="flex-1 p-3 text-sm border-2 rounded-xl border-gray-200 outline-none focus:border-blue-400" placeholder="輸入今日目標 (如: 運動 30 分鐘)">
                         <button id="addTaskBtn" class="pixel-btn !px-4 !py-1 text-xs">新增</button>
                     </div>
-                    <ul id="taskList" class="flex flex-col gap-2 max-h-[260px] overflow-y-auto"></ul>
+                    <ul id="taskList" class="flex flex-col gap-2 max-h-[200px] overflow-y-auto"></ul>
                 </div>
                 <div class="text-right pb-4"><button id="nextDayBtn" class="pixel-btn !bg-blue-500 !py-1.5 text-[11px] opacity-80">快進明日結算</button></div>
             </div>
 
-            <!-- 2. 莊園 -->
+            <!-- 2. 我的莊園 -->
             <div id="tab-estate" class="tab-content hidden-tab flex flex-col gap-4">
-                <div class="bg-white/90 p-4 rounded-3xl border-4 border-green-200 shadow-lg">
+                <div class="bg-white/90 p-4 rounded-3xl border-4 border-green-200 shadow-lg" id="tut-farm">
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="text-base font-black text-green-800">🌾 農場管理 (5日滿級關鍵)</h3>
                         <button id="harvestFoodBtn" class="pixel-btn !bg-green-600 !py-1.5 !px-6 text-[14px]">收割糧食</button>
@@ -186,17 +175,17 @@
                     </div>
                 </div>
                 <div id="farmVisual" class="farm-canvas border-b-4 border-[#3e281b]"><div id="farmersContainer"></div></div>
-                <div class="text-[13px] font-black text-emerald-800 ml-1 uppercase tracking-widest">🌳 居民花園 (左右滑動查看所有樹木)</div>
+                <div class="text-[13px] font-black text-emerald-800 ml-1 uppercase tracking-widest">🌳 居民花園 (左右滑動查看)</div>
                 <div id="gardenVisual" class="garden-scroll-area bg-emerald-900/5 rounded-3xl border-2 border-emerald-900/10"></div>
             </div>
 
+            <!-- 3. 探勘與圖鑑 -->
             <div id="tab-mining" class="tab-content hidden-tab flex flex-col items-center gap-5 py-8 bg-amber-50 rounded-[40px]">
                 <h2 class="font-black text-[#5d4037] text-2xl">資源探勘系統</h2>
                 <div class="w-32 h-32 bg-amber-900 rounded-full flex items-center justify-center text-6xl border-8 border-[#5d4037] shadow-lg">⛏️</div>
-                <button id="mineBtn" class="pixel-btn !bg-amber-800 px-16 py-4 text-xl shadow-xl">開始探勘 (⚡50)</button>
+                <button id="mineBtn" class="pixel-btn !bg-amber-800 px-16 py-4 text-xl shadow-xl">消耗 50 ⚡ 開始探勘</button>
                 <div id="mineResult" class="text-base font-black text-green-700 h-8 text-center"></div>
             </div>
-
             <div id="tab-dex" class="tab-content hidden-tab p-2">
                 <h3 class="font-black text-center mb-4 text-[#5d4037]">🌿 莊園成長圖鑑</h3>
                 <div id="dexGrid" class="grid grid-cols-3 gap-3"></div>
@@ -215,7 +204,7 @@
             <div class="flex-1 text-[13px] space-y-3">
                 <p class="font-black text-emerald-800">等級: <span id="modalLevel" class="text-lg">1</span></p>
                 <p class="font-black text-orange-600">工期剩餘: <span id="modalWorkUntil">0h</span></p>
-                <p class="font-bold text-gray-600">累積收益: <span id="modalSouvenirs" class="text-blue-600 font-black">0</span></p>
+                <p class="font-bold text-gray-600">累積收益: <span id="modalSouvenirs">0</span></p>
             </div>
         </div>
         <div class="grid grid-cols-2 gap-4">
@@ -247,19 +236,42 @@
             snowy: { icon: '❄️', sky: 'linear-gradient(to bottom, #e1f5fe 0%, #ffffff 100%)' }
         };
 
-        // 初始狀態：預設給玩家一顆橡木 (basic: 1)
         let state = {
             username: "", money: 500, energy: 100, food: 300,
             level: 1, xp: 0, treeType: 'basic', weather: 'sunny',
             inventory: { basic: 1, autumn: 0, cherry: 0, gold: 0, dead: 0, crystal: 0, mystic: 0, sunset: 0, snow: 0 },
             garden: [], farmStorage: 0, farmMax: 200, farmLv: 1, farmers: 1,
-            timeOffset: 0, tasks: [{ id: 1, text: "細心培育澆灌古樹", xp: 30, en: 50, coolUntil: 0 }]
+            timeOffset: 0, tasks: [{ id: 1, text: "細心培育澆灌古樹", xp: 30, en: 50, coolUntil: 0 }],
+            tutorialStep: 0, hasFinishedTutorial: false
         };
 
         let selectedTreeIdx = null;
         function getGameTime() { return Date.now() + Number(state.timeOffset || 0); }
         function safeSetText(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
 
+        // --- 新手教學邏輯 ---
+        const tutorialFlow = [
+            { title: "歡迎來到森林莊園！", text: "這是一片神秘的森林。作為冒險者，你將透過日常修行來培育奇蹟之樹。讓我們開始導覽吧！" },
+            { title: "1. 選擇你的物種", text: "頂部的清單可以切換你想培育的種子。我們已經預設送給你一顆「橡樹」種子了！" },
+            { title: "2. 核心成長機制", text: "在下方任務欄輸入你每天想達成的目標，點擊「澆灌」即可獲得 30 XP，當經驗滿 100 時樹木就會升級！" },
+            { title: "3. 移植莊園", text: "培育到 MAX (Lv.7) 之後，就可以點擊移植按鈕將它種入你的莊園。莊園中的樹會產生紀念品讓你換成金幣。" },
+            { title: "4. 管理農場", text: "在「我的莊園」分頁，你可以擴建農場、雇用農夫。這裡產出的糧食是維持樹木生產力的關鍵！" },
+            { title: "5. 祝你冒險順利", text: "每天完成任務，看著你的莊園慢慢壯大吧！別忘了快進明日來結算一天的收穫！" }
+        ];
+
+        function nextTutorialStep() {
+            state.tutorialStep++;
+            if (state.tutorialStep >= tutorialFlow.length) {
+                document.getElementById('tutorialOverlay').style.display = 'none';
+                state.hasFinishedTutorial = true;
+                return;
+            }
+            const step = tutorialFlow[state.tutorialStep];
+            document.getElementById('tutTitle').textContent = step.title;
+            document.getElementById('tutText').textContent = step.text;
+        }
+
+        // --- 天氣效果 ---
         function updateWeather(type) {
             state.weather = type || state.weather;
             const w = weatherDB[state.weather];
@@ -271,32 +283,32 @@
                 for(let i=0; i<40; i++) {
                     const r = document.createElement('div'); r.className = 'weather-particle raindrop';
                     r.style.left = Math.random()*100 + 'vw'; r.style.top = Math.random()*100 + 'vh';
-                    r.style.animation = `floatUp ${0.5 + Math.random()}s linear infinite reverse`;
+                    r.style.animation = `floatUp ${0.6 + Math.random()}s linear infinite reverse`;
                     container.appendChild(r);
                 }
             } else if (state.weather === 'snowy') {
                 for(let i=0; i<30; i++) {
                     const s = document.createElement('div'); s.className = 'weather-particle snowflake';
                     s.style.width = s.style.height = (3+Math.random()*5)+'px';
-                    s.style.left = Math.random()*100 + 'vw'; 
-                    s.style.top = Math.random()*100 + 'vh'; // 修復：之前這裡誤寫為 r.style.top 導致崩潰
+                    s.style.left = Math.random()*100 + 'vw'; s.style.top = Math.random()*100 + 'vh';
                     s.style.animation = `floatUp ${3 + Math.random()*5}s linear infinite reverse`;
                     container.appendChild(s);
                 }
             }
         }
 
+        // --- 登入與資料庫 ---
         document.getElementById('loginBtn').onclick = async () => {
             const user = document.getElementById('accInput').value;
             const pass = document.getElementById('pwInput').value;
             if(!user || !pass) return alert("請輸入帳密");
-            document.getElementById('loginStatus').textContent = "⏳ 資料庫連線中...";
+            document.getElementById('loginStatus').textContent = "⏳ 資料載入中...";
             try {
                 const response = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: "login", username: user, password: pass, defaultData: state }) });
                 const res = await response.json();
                 if(res.result === "wrong_pw") return alert("密碼錯誤");
                 const loaded = res.data;
-                ['money','energy','food','farmStorage','farmMax','farmLv','farmers','timeOffset','level','xp'].forEach(k => {
+                ['money','energy','food','farmStorage','farmMax','farmLv', 'farmers','timeOffset','level','xp','tutorialStep'].forEach(k => {
                     loaded[k] = Number(loaded[k] !== undefined ? loaded[k] : (state[k] || 0));
                 });
                 loaded.tasks = Array.isArray(loaded.tasks) ? loaded.tasks : state.tasks;
@@ -305,8 +317,9 @@
                 state = loaded; state.username = user;
                 document.getElementById('loginOverlay').style.display = 'none';
                 document.getElementById('mainContainer').style.display = 'flex';
+                if (!state.hasFinishedTutorial) document.getElementById('tutorialOverlay').style.display = 'flex';
                 initGame(); updateWeather();
-            } catch (e) { alert("連線失敗！"); }
+            } catch (e) { alert("無法連線資料庫，請檢查 SCRIPT_URL！"); }
         };
 
         document.getElementById('saveCloudBtn').onclick = async () => {
@@ -419,8 +432,7 @@
             if(!state.tasks) state.tasks = [];
             if(inp.value.trim()){
                 state.tasks.unshift({ id: Date.now(), text: inp.value.trim(), xp: 30, en: 50, coolUntil: 0 });
-                inp.value = ''; renderTasks();
-                triggerHype(null, null, "目標建立!", false, "#2196f3");
+                inp.value = ''; renderTasks(); triggerHype(null, null, "目標建立!", false, "#2196f3");
             }
         };
 
@@ -454,7 +466,7 @@
             state.money += p; t.souvenirs -= Math.floor(t.souvenirs); closeModal(); renderGarden(); refreshUI(); triggerHype(e.clientX, e.clientY, `+${p}🪙`, false, "#ff9800");
         };
 
-        document.getElementById('upgradeFarmBtn').onclick = () => { if(state.energy >= 150) { state.energy -= 150; state.farmMax += 200; state.farmLv++; refreshUI(); triggerHype(null,null,"擴建完成!"); } };
+        document.getElementById('upgradeFarmBtn').onclick = () => { if(state.energy >= 150) { state.energy -= 150; state.farmMax += 200; state.farmLv++; refreshUI(); } };
         document.getElementById('hireFarmerBtn').onclick = () => { if(state.money >= 1000) { state.money -= 1000; state.farmers++; renderFarmers(); refreshUI(); } };
         document.getElementById('harvestFoodBtn').onclick = (e) => { const a = Math.floor(state.farmStorage); state.food += a; state.farmStorage = 0; refreshUI(); triggerHype(e.clientX, e.clientY, `+${a}🍎`, false, "#8bc34a"); };
 
@@ -495,10 +507,8 @@
         };
 
         window.deleteTask = (tid, e) => {
-            e.stopPropagation();
-            state.tasks = state.tasks.filter(x => x.id !== tid);
-            triggerHype(e.clientX, e.clientY, "目標刪除", false, "#ff5252");
-            renderTasks();
+            e.stopPropagation(); state.tasks = state.tasks.filter(x => x.id !== tid);
+            triggerHype(e.clientX, e.clientY, "目標刪除", false, "#ff5252"); renderTasks();
         };
 
         function renderFarmers() {
